@@ -11,3 +11,5 @@ cd .\tgb-faker
 ```
 or Import it via Android Studio
 
+### Credits
+- Ciceron @ unknowncheats.me (Initial concept)
