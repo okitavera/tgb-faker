@@ -15,13 +15,10 @@ import java.io.File
 class MainActivity : AppCompatActivity() {
 
     private val uriOfPUBG = "com.tencent.ig"
-    private val mBin = "/data/local/tmp/magisk"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
-        exportMagiskBin()
 
         if (File("/system/bin/genyd.bak").exists().not()) {
             AlertDialog.Builder(this)
@@ -41,27 +38,10 @@ class MainActivity : AppCompatActivity() {
             Thread(Runnable {
                 runOnUiThread {
                     tv_logs.text = "Logs :"
-                    tv_logs.text = tv_logs.text.toString().plus("\nMasking system properties using setprop...")
-                    btn_apply.visibility = View.INVISIBLE
-                }
-
-                TPatcher.fakeProps()
-
-                runOnUiThread {
                     tv_logs.text = tv_logs.text.toString().plus("\nCleanup Tencent tmps data")
                 }
 
-                NativeCalls.invokeSU("rm -rf /data/data/$uriOfPUBG/files/tss_*")
-
-                runOnUiThread {
-                    tv_logs.text = tv_logs.text.toString().plus("\nFinding ro.genymoniton props ...")
-                }
-
-                TPatcher.fakeNoGeny { prop ->
-                    runOnUiThread {
-                        tv_logs.text = tv_logs.text.toString().plus("\nFound: $prop. Deleting.")
-                    }
-                }
+                su("rm -rf /data/data/$uriOfPUBG/files/tss_*")
 
                 runOnUiThread {
                     tv_logs.text = tv_logs.text.toString().plus("\nPatching complete.")
@@ -74,23 +54,15 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        intent?.action.equals(TPatcher.ACTION_REPACTH).run {
+        intent?.action.equals("ACT_REPATCH").run {
             if (this) reloadPatch()
         }
     }
 
-
-    private fun exportMagiskBin() {
-        File(mBin).run {
-            writeBytes(resources.openRawResource(R.raw.magisk).readBytes())
-            setExecutable(true)
-        }
-    }
-
     private fun patchGenyDaemon(file: String) {
-        NativeCalls.invokeSU("cp $file $file.bak")
+        su("cp $file $file.bak")
         File(file).printWriter().use { it.println("#DUMMY FILE") }
-        NativeCalls.invokeSU("chmod 755 $file")
+        su("chmod 755 $file")
 
         AlertDialog.Builder(this)
             .setTitle("Geny daemon patched!")
@@ -100,11 +72,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun reloadPatch() {
-        val pid = NativeCalls.pidOf(uriOfPUBG)
-        TPatcher.fakeProps()
-        TPatcher.fakeNoGeny()
-        NativeCalls.invokeSU("rm -rf /data/data/$uriOfPUBG/files/tss_*")
-        NativeCalls.invokeSU("kill -9 $pid")
+        val pid = pidOf(uriOfPUBG)
+        su("rm -rf /data/data/$uriOfPUBG/files/tss_*")
+        su("kill -9 $pid")
         launchApp(uriOfPUBG)
     }
 
@@ -117,7 +87,7 @@ class MainActivity : AppCompatActivity() {
         startActivity(launchIntent)
         Thread.sleep(1000)
         val serviceIntent = Intent(this, NotifierService::class.java)
-        serviceIntent.putExtra("pid", NativeCalls.pidOf(uriOfPUBG))
+        serviceIntent.putExtra("pid", pidOf(uriOfPUBG))
         startService(serviceIntent)
         finish()
     }
@@ -129,4 +99,13 @@ class MainActivity : AppCompatActivity() {
             it.service.className == serviceClass.name
         }
 
+
+    private fun su(a: String): Process =
+            Runtime.getRuntime().exec(arrayOf("su", "-c", a))
+
+    private fun pidOf(name: String) =
+            Runtime.getRuntime().exec(arrayOf("sh", "-c", "ps"))
+                    .inputStream.bufferedReader().readLines()
+                    .lastOrNull{ it.contains(Regex.escape(name).plus("$").toRegex()) }
+                    ?.replace("^\\w+\\s+(\\d+)\\s.*$".toRegex(),"$1") ?: "N/A"
 }

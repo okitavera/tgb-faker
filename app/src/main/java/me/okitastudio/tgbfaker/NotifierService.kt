@@ -16,7 +16,7 @@ class NotifierService : Service() {
         if (intent != null && intent.hasExtra("pid")) {
             val pid = intent.getStringExtra("pid")
             val mainIntent = Intent(this, MainActivity::class.java)
-            mainIntent.action = TPatcher.ACTION_REPACTH
+            mainIntent.action = "ACT_REPATCH"
             mainIntent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
             val builder = NotificationCompat.Builder(this, getString(R.string.app_name))
             builder.setContentTitle(getString(R.string.app_name))
