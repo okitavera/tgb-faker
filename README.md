@@ -11,5 +11,6 @@ cd .\tgb-faker
 ```
 or Import it via Android Studio
 
-### Credits
+### Mentioned Contribs
 - Ciceron @ unknowncheats.me (Initial concept)
+- R-chan (method optimization: removing unused system properties)
